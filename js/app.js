@@ -7,12 +7,13 @@ AuraCare.App = (function() {
     '#patients': AuraCare.Views.Patients,
     '#staff': AuraCare.Views.Staff,
     '#resources': AuraCare.Views.Resources,
+    '#lab': AuraCare.Views.Lab,
     '#appointments': AuraCare.Views.Appointments,
     '#billing': AuraCare.Views.Billing
   };
 
   let currentHash = '#dashboard';
-  const DOCTOR_ROUTES = ['#dashboard', '#patients', '#staff'];
+  const DOCTOR_ROUTES = ['#dashboard', '#patients', '#staff', '#lab'];
 
   async function init() {
     // 1. Initialize local storage seed data
@@ -238,6 +239,7 @@ AuraCare.App = (function() {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+    updateNotificationBadge();
   }
 
   function setupGlobalEvents() {
@@ -295,6 +297,66 @@ AuraCare.App = (function() {
     }
 
     setupThemeToggle();
+    setupNotifications();
+  }
+
+  function setupNotifications() {
+    const bellBtn = document.getElementById('btn-notifications');
+    const dropdown = document.getElementById('notif-dropdown');
+    const markReadBtn = document.getElementById('btn-mark-all-read');
+    if (!bellBtn || !dropdown) return;
+
+    bellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+      if (!dropdown.classList.contains('hidden')) renderNotifications();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== bellBtn) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    if (markReadBtn) {
+      markReadBtn.addEventListener('click', () => {
+        AuraCare.Store.markAllLogsRead();
+        renderNotifications();
+        updateNotificationBadge();
+      });
+    }
+
+    updateNotificationBadge();
+  }
+
+  function renderNotifications() {
+    const list = document.getElementById('notif-dropdown-list');
+    if (!list) return;
+    const logs = AuraCare.Store.getSystemLogs().slice(0, 20);
+
+    if (logs.length === 0) {
+      list.innerHTML = `<div class="notif-item">No notifications yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = logs.map(l => `
+      <div class="notif-item ${!l.read ? 'unread' : ''}">
+        ${l.text}
+        <span class="notif-date">${l.date}</span>
+      </div>
+    `).join('');
+  }
+
+  function updateNotificationBadge() {
+    const badge = document.getElementById('notif-badge');
+    if (!badge) return;
+    const count = AuraCare.Store.getUnreadLogCount ? AuraCare.Store.getUnreadLogCount() : 0;
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
   }
 
   function setupThemeToggle() {

@@ -133,9 +133,21 @@ AuraCare.Views.Staff = {
             </select>
           </td>
           <td style="text-align:right;">
-            <button class="btn btn-secondary btn-sm flex-center btn-page-staff" data-name="${s.name}" data-phone="${s.phone}" ${s.status === 'off-duty' ? 'disabled' : ''}>
-              <i data-lucide="bell-ring" style="width:12px;height:12px;"></i> Page Staff
-            </button>
+            <div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm flex-center btn-page-staff" data-name="${s.name}" data-phone="${s.phone}" ${s.status === 'off-duty' ? 'disabled' : ''}>
+                <i data-lucide="bell-ring" style="width:12px;height:12px;"></i> Page
+              </button>
+              ${s.role === 'Doctor' ? `
+                <button class="btn btn-secondary btn-sm flex-center btn-manage-schedule" data-id="${s.id}">
+                  <i data-lucide="calendar-cog" style="width:12px;height:12px;"></i> Schedule
+                </button>
+              ` : ''}
+              ${isAdmin && s.role === 'Doctor' ? `
+                <button class="btn btn-secondary btn-sm flex-center btn-manage-role" data-email="${s.email}">
+                  <i data-lucide="shield" style="width:12px;height:12px;"></i> Role
+                </button>
+              ` : ''}
+            </div>
           </td>
         </tr>
       `;
@@ -160,6 +172,14 @@ AuraCare.Views.Staff = {
         AuraCare.Store.addLog(`Clinical page broadcasted to: ${name} (${phone})`, 'info');
         AuraCare.Toasts.success(`Page dispatch sent to ${name}.`);
       });
+    });
+
+    tableBody.querySelectorAll('.btn-manage-schedule').forEach(btn => {
+      btn.addEventListener('click', () => this.openScheduleModal(btn.getAttribute('data-id')));
+    });
+
+    tableBody.querySelectorAll('.btn-manage-role').forEach(btn => {
+      btn.addEventListener('click', () => this.openRoleModal(btn.getAttribute('data-email')));
     });
 
     if (window.lucide) {
@@ -331,6 +351,72 @@ AuraCare.Views.Staff = {
           AuraCare.Toasts.success(`${name} has been registered as a doctor.`);
           AuraCare.Modal.close();
           this.render();
+        }
+      }
+    ]);
+  },
+
+  openScheduleModal: function(staffId) {
+    const staff = AuraCare.Store.getStaff().find(s => s.id === staffId);
+    if (!staff) return;
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const availability = staff.availability || { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false };
+
+    const modalBody = `
+      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Set weekly availability for <strong>${staff.name}</strong> (${staff.specialty}). This controls which days appointments can be booked with this doctor.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${days.map(d => `
+          <label style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 14px; border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-app); cursor:pointer;">
+            <span style="font-size:0.75rem; font-weight:600;">${d}</span>
+            <input type="checkbox" class="schedule-day-check" data-day="${d}" ${availability[d] ? 'checked' : ''}>
+          </label>
+        `).join('')}
+      </div>
+    `;
+
+    AuraCare.Modal.open(`Manage Schedule - ${staff.name}`, modalBody, [
+      { text: 'Cancel', className: 'btn-secondary', onClick: () => AuraCare.Modal.close() },
+      {
+        text: 'Save Schedule', className: 'btn-primary', onClick: () => {
+          const updated = {};
+          document.querySelectorAll('.schedule-day-check').forEach(chk => {
+            updated[chk.getAttribute('data-day')] = chk.checked;
+          });
+          AuraCare.Store.updateStaffSchedule(staffId, updated);
+          AuraCare.Toasts.success('Weekly schedule updated.');
+          AuraCare.Modal.close();
+        }
+      }
+    ]);
+  },
+
+  openRoleModal: function(email) {
+    const users = AuraCare.Store.getUsers();
+    const user = users.find(u => u.email === email);
+    if (!user) {
+      AuraCare.Toasts.warning('No login account found for this staff member yet.');
+      return;
+    }
+
+    const modalBody = `
+      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Change the access role for <strong>${user.name}</strong> (${user.email}).</p>
+      <div class="form-group">
+        <label class="form-label" for="role-select">Access Role</label>
+        <select id="role-select" class="form-control">
+          <option value="doctor" ${user.role === 'doctor' ? 'selected' : ''}>Doctor Console</option>
+          <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin Console</option>
+        </select>
+      </div>
+    `;
+
+    AuraCare.Modal.open('Manage User Role', modalBody, [
+      { text: 'Cancel', className: 'btn-secondary', onClick: () => AuraCare.Modal.close() },
+      {
+        text: 'Update Role', className: 'btn-primary', onClick: () => {
+          const newRole = document.getElementById('role-select').value;
+          AuraCare.Store.updateUserRole(email, newRole);
+          AuraCare.Toasts.success(`${user.name} is now assigned the ${newRole} role.`);
+          AuraCare.Modal.close();
         }
       }
     ]);

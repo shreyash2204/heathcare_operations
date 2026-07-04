@@ -14,8 +14,10 @@
 }
 
 .auth-card {
-  background-color: var(--bg-panel);
-  border: 1px solid var(--border-color);
+  background-color: var(--bg-glass-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 440px;
@@ -106,7 +108,9 @@
 .app-sidebar {
   width: 260px;
   height: 100vh;
-  background: linear-gradient(180deg, var(--bg-panel), color-mix(in srgb, var(--bg-panel) 86%, var(--primary) 14%));
+  background: linear-gradient(180deg, var(--bg-glass-strong), color-mix(in srgb, var(--bg-glass-strong) 86%, var(--primary) 14%));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -123,6 +127,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  text-decoration: none;
+  color: inherit;
 }
 
 .logo-icon {
@@ -252,7 +258,9 @@
 /* App Header next to Sidebar */
 .app-header {
   height: 60px;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-header);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;

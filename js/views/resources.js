@@ -4,13 +4,18 @@ window.AuraCare.Views = window.AuraCare.Views || {};
 AuraCare.Views.Resources = {
   render: function() {
     const viewport = document.getElementById('app-viewport');
-    
+    const isAdmin = AuraCare.App.getActiveRole && AuraCare.App.getActiveRole() === 'admin';
+    const wards = AuraCare.Store.getWards();
+
     viewport.innerHTML = `
       <div class="fade-in">
         <!-- Header -->
-        <div style="margin-bottom: 24px;">
-          <h1 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700;">Facility Resources & Bed Grid</h1>
-          <p style="color: var(--text-secondary); font-size: 0.8rem;">Monitor live ward coordinates, allocate beds for admitted patients, and manage pharmaceutical stockpiles.</p>
+        <div class="flex-between" style="margin-bottom: 24px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h1 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700;">Facility Resources & Bed Grid</h1>
+            <p style="color: var(--text-secondary); font-size: 0.8rem;">Monitor live ward coordinates, allocate beds for admitted patients, and manage pharmaceutical stockpiles.</p>
+          </div>
+          ${isAdmin ? `<button class="btn btn-secondary" id="btn-manage-wards"><i data-lucide="settings-2"></i> Manage Wards & Beds</button>` : ''}
         </div>
 
         <!-- Section split layout -->
@@ -26,28 +31,13 @@ AuraCare.Views.Resources = {
               </div>
             </div>
 
-            <!-- ICU Section -->
-            <div class="ward-section">
-              <div class="ward-header" style="color:var(--danger);">Intensive Care Unit (ICU)</div>
-              <div class="bed-grid" id="ward-grid-icu"></div>
-            </div>
-
-            <!-- Emergency Section -->
-            <div class="ward-section">
-              <div class="ward-header" style="color:var(--warning);">Emergency Room (ER)</div>
-              <div class="bed-grid" id="ward-grid-emergency"></div>
-            </div>
-
-            <!-- General Ward Section -->
-            <div class="ward-section">
-              <div class="ward-header" style="color:var(--success);">General Medicine Ward</div>
-              <div class="bed-grid" id="ward-grid-gw"></div>
-            </div>
-
-            <!-- Pediatrics Section -->
-            <div class="ward-section">
-              <div class="ward-header" style="color:var(--info);">Pediatrics Ward</div>
-              <div class="bed-grid" id="ward-grid-ped"></div>
+            <div id="ward-sections-container">
+              ${wards.map(w => `
+                <div class="ward-section">
+                  <div class="ward-header">${w.name} <span style="font-weight:400; color:var(--text-muted); font-size:0.75rem;">(${w.department})</span></div>
+                  <div class="bed-grid" id="ward-grid-${w.id}"></div>
+                </div>
+              `).join('')}
             </div>
           </div>
 
@@ -64,16 +54,17 @@ AuraCare.Views.Resources = {
 
     this.renderWards();
     this.renderInventory();
+
+    const manageBtn = document.getElementById('btn-manage-wards');
+    if (manageBtn) manageBtn.addEventListener('click', () => this.openManageWardsModal());
+
+    if (window.lucide) window.lucide.createIcons();
   },
 
   renderWards: function() {
     const beds = AuraCare.Store.getBeds();
     const patients = AuraCare.Store.getPatients();
-
-    const icuContainer = document.getElementById('ward-grid-icu');
-    const erContainer = document.getElementById('ward-grid-emergency');
-    const gwContainer = document.getElementById('ward-grid-gw');
-    const pedContainer = document.getElementById('ward-grid-ped');
+    const wards = AuraCare.Store.getWards();
 
     const generateBedHtml = (bed) => {
       let cssClass = 'available';
@@ -101,10 +92,14 @@ AuraCare.Views.Resources = {
       `;
     };
 
-    icuContainer.innerHTML = beds.filter(b => b.ward === 'ICU').map(generateBedHtml).join('');
-    erContainer.innerHTML = beds.filter(b => b.ward === 'Emergency').map(generateBedHtml).join('');
-    gwContainer.innerHTML = beds.filter(b => b.ward === 'General Ward').map(generateBedHtml).join('');
-    pedContainer.innerHTML = beds.filter(b => b.ward === 'Pediatrics').map(generateBedHtml).join('');
+    wards.forEach(w => {
+      const container = document.getElementById(`ward-grid-${w.id}`);
+      if (!container) return;
+      const wardBeds = beds.filter(b => b.ward === w.name);
+      container.innerHTML = wardBeds.length
+        ? wardBeds.map(generateBedHtml).join('')
+        : `<p style="font-size:0.75rem; color:var(--text-muted); grid-column: 1/-1;">No beds configured for this ward yet.</p>`;
+    });
 
     document.querySelectorAll('.bed-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -113,9 +108,7 @@ AuraCare.Views.Resources = {
       });
     });
 
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
+    if (window.lucide) window.lucide.createIcons();
   },
 
   renderInventory: function() {
@@ -126,7 +119,7 @@ AuraCare.Views.Resources = {
     container.innerHTML = inv.map(item => {
       const percent = Math.min(Math.round((item.stock / (item.minStock * 2.5)) * 100), 100);
       const isLow = item.stock < item.minStock;
-      
+
       let barColor = 'var(--secondary)';
       if (isLow) barColor = 'var(--danger)';
 
@@ -139,25 +132,180 @@ AuraCare.Views.Resources = {
           <div style="width:100%; height:6px; background-color:var(--border-color); border-radius:3px; overflow:hidden; position:relative; margin-bottom:8px;">
             <div style="width:${percent}%; height:100%; background-color:${barColor}; border-radius:3px; transition: width 0.3s ease;"></div>
           </div>
-          <div class="flex-between" style="font-size:0.7rem; color:var(--text-secondary);">
+          <div class="flex-between" style="font-size:0.7rem; color:var(--text-secondary); flex-wrap:wrap; gap:6px;">
             <span>Min Alert: ${item.minStock} | Area: ${item.location}</span>
             <div style="display:flex; gap:6px;">
+              ${item.category === 'Medications' ? `<button class="btn btn-primary btn-sm btn-dispense" data-id="${item.id}" style="padding:2px 8px; font-size:0.65rem;"><i data-lucide="pill" style="width:11px;height:11px;"></i> Dispense</button>` : ''}
               <button class="btn btn-secondary btn-sm btn-stock-adjust" data-id="${item.id}" data-val="-5" style="padding:1px 5px; font-size:0.6rem;">-5</button>
-              <button class="btn btn-secondary btn-sm btn-stock-adjust" data-id="${item.id}" data-val="20" style="padding:1px 5px; font-size:0.6rem;">+20</button>
+              <button class="btn btn-secondary btn-sm btn-stock-adjust" data-id="${item.id}" data-val="20" style="padding:1px 5px; font-size:0.6rem;">+20 (Reorder)</button>
             </div>
           </div>
         </div>
       `;
     }).join('');
 
+    if (window.lucide) window.lucide.createIcons();
+
     container.querySelectorAll('.btn-stock-adjust').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
         const adjustValue = parseInt(btn.getAttribute('data-val'), 10);
-        
+
         AuraCare.Store.adjustStock(id, adjustValue);
         this.render();
+      });
+    });
+
+    container.querySelectorAll('.btn-dispense').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openDispenseModal(btn.getAttribute('data-id'));
+      });
+    });
+  },
+
+  openDispenseModal: function(itemId) {
+    const item = AuraCare.Store.getInventory().find(i => i.id === itemId);
+    const patients = AuraCare.Store.getPatients().filter(p => !p.dischargeDate);
+
+    const modalBody = `
+      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Dispense <strong>${item.name}</strong> (${item.stock} ${item.unit} currently in stock).</p>
+      <form id="dispense-form" class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label" for="dispense-patient">Dispense To Patient</label>
+          <select id="dispense-patient" class="form-control">
+            <option value="">General Stock Room (no specific patient)</option>
+            ${patients.map(p => `<option value="${p.id}">${p.name} (${p.id})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="dispense-qty">Quantity (${item.unit})</label>
+          <input type="number" id="dispense-qty" class="form-control" min="1" max="${item.stock}" value="1">
+          <span class="error-text hidden" id="err-dispense-qty"></span>
+        </div>
+      </form>
+    `;
+
+    AuraCare.Modal.open('Dispense Medicine', modalBody, [
+      { text: 'Cancel', className: 'btn-secondary', onClick: () => AuraCare.Modal.close() },
+      {
+        text: 'Confirm Dispense', className: 'btn-primary', onClick: () => {
+          const patientId = document.getElementById('dispense-patient').value;
+          const patient = patientId ? patients.find(p => p.id === patientId) : null;
+          const qty = parseInt(document.getElementById('dispense-qty').value, 10);
+
+          if (!qty || qty < 1) {
+            document.getElementById('err-dispense-qty').textContent = 'Enter a valid quantity.';
+            document.getElementById('err-dispense-qty').classList.remove('hidden');
+            return;
+          }
+
+          const result = AuraCare.Store.dispenseMedicine(itemId, patientId, patient ? patient.name : null, qty);
+          if (!result.ok) {
+            document.getElementById('err-dispense-qty').textContent = result.message;
+            document.getElementById('err-dispense-qty').classList.remove('hidden');
+            return;
+          }
+
+          AuraCare.Toasts.success('Medicine dispensed successfully.');
+          AuraCare.Modal.close();
+          this.render();
+        }
+      }
+    ]);
+  },
+
+  openManageWardsModal: function() {
+    const wards = AuraCare.Store.getWards();
+    const beds = AuraCare.Store.getBeds();
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div>
+          <h4 style="font-size:0.9rem; margin-bottom:10px;">Ward Master</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;" id="ward-master-list">
+            ${wards.map(w => `
+              <div class="flex-between" style="padding:8px 12px; background:var(--bg-app); border-radius:var(--radius-sm); border:1px solid var(--border-color); font-size:0.8rem;">
+                <span><strong>${w.name}</strong> — ${w.department} (capacity ${w.capacity})</span>
+                <button class="btn btn-danger btn-sm btn-remove-ward" data-id="${w.id}" style="padding:2px 8px; font-size:0.65rem;">Remove</button>
+              </div>
+            `).join('')}
+          </div>
+          <form id="add-ward-form" class="form-grid" style="margin-bottom:0;">
+            <div class="form-group"><input type="text" id="new-ward-name" class="form-control" placeholder="Ward name"></div>
+            <div class="form-group"><input type="text" id="new-ward-dept" class="form-control" placeholder="Department"></div>
+            <div class="form-group"><input type="number" id="new-ward-capacity" class="form-control" placeholder="Capacity" min="1"></div>
+            <div class="form-group"><button type="button" class="btn btn-secondary" id="btn-add-ward" style="width:100%;">Add Ward</button></div>
+          </form>
+        </div>
+
+        <div style="border-top:1px solid var(--border-color); padding-top:16px;">
+          <h4 style="font-size:0.9rem; margin-bottom:10px;">Bed Master</h4>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px; max-height:180px; overflow-y:auto;" id="bed-master-list">
+            ${beds.map(b => `
+              <div class="flex-between" style="padding:6px 12px; background:var(--bg-app); border-radius:var(--radius-sm); border:1px solid var(--border-color); font-size:0.78rem;">
+                <span>${b.id} — ${b.ward} <span style="color:var(--text-muted);">(${b.status})</span></span>
+                <button class="btn btn-danger btn-sm btn-remove-bed" data-id="${b.id}" style="padding:1px 6px; font-size:0.6rem;">Remove</button>
+              </div>
+            `).join('')}
+          </div>
+          <form id="add-bed-form" class="form-grid">
+            <div class="form-group">
+              <select id="new-bed-ward" class="form-control">
+                ${wards.map(w => `<option value="${w.name}">${w.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group"><input type="text" id="new-bed-number" class="form-control" placeholder="Bed number, e.g. 6"></div>
+            <div class="form-group full-width"><button type="button" class="btn btn-secondary" id="btn-add-bed" style="width:100%;">Add Bed</button></div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    AuraCare.Modal.open('Manage Wards & Beds', bodyHtml, [
+      { text: 'Done', className: 'btn-primary', onClick: () => { AuraCare.Modal.close(); this.render(); } }
+    ]);
+
+    document.getElementById('btn-add-ward').addEventListener('click', () => {
+      const name = document.getElementById('new-ward-name').value.trim();
+      const dept = document.getElementById('new-ward-dept').value.trim() || 'General';
+      const capacity = parseInt(document.getElementById('new-ward-capacity').value, 10) || 0;
+      if (!name) { AuraCare.Toasts.warning('Enter a ward name.'); return; }
+      AuraCare.Store.addWard({ id: 'WRD-' + name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 90 + 10), name, department: dept, capacity });
+      AuraCare.Toasts.success('Ward added.');
+      AuraCare.Modal.close();
+      this.openManageWardsModal();
+    });
+
+    document.querySelectorAll('.btn-remove-ward').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const result = AuraCare.Store.removeWard(btn.getAttribute('data-id'));
+        if (!result.ok) { AuraCare.Toasts.warning(result.message); return; }
+        AuraCare.Toasts.success('Ward removed.');
+        AuraCare.Modal.close();
+        this.openManageWardsModal();
+      });
+    });
+
+    document.getElementById('btn-add-bed').addEventListener('click', () => {
+      const ward = document.getElementById('new-bed-ward').value;
+      const number = document.getElementById('new-bed-number').value.trim();
+      if (!number) { AuraCare.Toasts.warning('Enter a bed number.'); return; }
+      const prefix = ward.substring(0, 3).toUpperCase();
+      AuraCare.Store.addBed({ id: `${prefix}-${number}`, ward, number });
+      AuraCare.Toasts.success('Bed added.');
+      AuraCare.Modal.close();
+      this.openManageWardsModal();
+    });
+
+    document.querySelectorAll('.btn-remove-bed').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const result = AuraCare.Store.removeBed(btn.getAttribute('data-id'));
+        if (!result.ok) { AuraCare.Toasts.warning(result.message); return; }
+        AuraCare.Toasts.success('Bed removed.');
+        AuraCare.Modal.close();
+        this.openManageWardsModal();
       });
     });
   },

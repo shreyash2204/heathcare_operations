@@ -4,6 +4,7 @@ window.AuraCare.Views = window.AuraCare.Views || {};
 AuraCare.Views.Billing = {
   currentItems: [], // Temporary storage for invoice creation
   currentStatusFilter: 'all', // Active table filter state
+  currentTab: 'invoices', // 'invoices' | 'claims'
 
   render: function() {
     const viewport = document.getElementById('app-viewport');
@@ -85,6 +86,13 @@ AuraCare.Views.Billing = {
           </div>
         </div>
 
+        <!-- Tab Switcher -->
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <button class="btn ${this.currentTab === 'invoices' ? 'btn-primary' : 'btn-secondary'}" id="tab-btn-invoices"><i data-lucide="receipt"></i> Invoices</button>
+          <button class="btn ${this.currentTab === 'claims' ? 'btn-primary' : 'btn-secondary'}" id="tab-btn-claims"><i data-lucide="shield-check"></i> Insurance Claims</button>
+        </div>
+
+        ${this.currentTab === 'invoices' ? `
         <!-- Invoices List Table -->
         <div class="card" style="padding:0;">
           <div class="table-container" style="border:none; margin-top:0;">
@@ -106,11 +114,35 @@ AuraCare.Views.Billing = {
             </table>
           </div>
         </div>
+        ` : `
+        <!-- Insurance Claims Table -->
+        <div class="card" style="padding:0;">
+          <div class="table-container" style="border:none; margin-top:0;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Claim ID</th>
+                  <th>Patient</th>
+                  <th>Insurer</th>
+                  <th>Claim Amount</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="claims-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+        `}
       </div>
     `;
 
     this.bindEvents();
-    this.renderInvoices();
+    if (this.currentTab === 'invoices') {
+      this.renderInvoices();
+    } else {
+      this.renderClaims();
+    }
   },
 
   bindEvents: function() {
@@ -136,6 +168,16 @@ AuraCare.Views.Billing = {
 
     document.getElementById('bill-card-pending').addEventListener('click', () => {
       this.currentStatusFilter = 'pending';
+      this.render();
+    });
+
+    document.getElementById('tab-btn-invoices').addEventListener('click', () => {
+      this.currentTab = 'invoices';
+      this.render();
+    });
+
+    document.getElementById('tab-btn-claims').addEventListener('click', () => {
+      this.currentTab = 'claims';
       this.render();
     });
 
@@ -306,6 +348,18 @@ AuraCare.Views.Billing = {
           this.render();
         }
       });
+
+      const alreadyClaimed = AuraCare.Store.getClaims().some(c => c.invoiceId === b.id);
+      if (!alreadyClaimed) {
+        buttons.push({
+          text: '<i data-lucide="shield-check"></i> File Insurance Claim',
+          className: 'btn-secondary',
+          onClick: () => {
+            AuraCare.Modal.close();
+            setTimeout(() => this.openFileClaimModal(b), 250);
+          }
+        });
+      }
     }
 
     AuraCare.Modal.open('Receipt Ledger Breakdown', modalBody, buttons);
@@ -492,6 +546,112 @@ AuraCare.Views.Billing = {
             AuraCare.Modal.close();
             this.render();
           }
+        }
+      }
+    ]);
+  },
+
+  renderClaims: function() {
+    const tbody = document.getElementById('claims-table-body');
+    if (!tbody) return;
+
+    const claims = AuraCare.Store.getClaims();
+    if (claims.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">No insurance claims filed yet. File one from a pending invoice's receipt view.</td></tr>`;
+      return;
+    }
+
+    const badgeFor = (status) => {
+      const map = {
+        submitted: 'bg-warning-glow',
+        approved: 'bg-success-glow',
+        rejected: 'bg-danger-glow'
+      };
+      return `<span class="badge ${map[status] || 'bg-info-glow'}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+    };
+
+    tbody.innerHTML = claims.map(c => `
+      <tr>
+        <td class="nowrap"><strong>${c.id}</strong></td>
+        <td>${c.patientName}</td>
+        <td>${c.insurer}<div style="font-size:0.7rem; color:var(--text-muted);">Policy: ${c.policyNumber}</div></td>
+        <td><strong>${AuraCare.Utils.formatCurrency(c.claimAmount)}</strong></td>
+        <td class="nowrap">${badgeFor(c.status)}</td>
+        <td class="nowrap" style="text-align:right;">
+          ${c.status === 'submitted' ? `
+            <button class="btn btn-success btn-sm btn-approve-claim" data-id="${c.id}" style="margin-right:6px;">Approve</button>
+            <button class="btn btn-danger btn-sm btn-reject-claim" data-id="${c.id}">Reject</button>
+          ` : '<span style="font-size:0.75rem; color:var(--text-muted);">Resolved</span>'}
+        </td>
+      </tr>
+    `).join('');
+
+    tbody.querySelectorAll('.btn-approve-claim').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AuraCare.Store.updateClaimStatus(btn.getAttribute('data-id'), 'approved');
+        AuraCare.Toasts.success('Insurance claim approved.');
+        this.render();
+      });
+    });
+    tbody.querySelectorAll('.btn-reject-claim').forEach(btn => {
+      btn.addEventListener('click', () => {
+        AuraCare.Store.updateClaimStatus(btn.getAttribute('data-id'), 'rejected');
+        AuraCare.Toasts.warning('Insurance claim rejected.');
+        this.render();
+      });
+    });
+  },
+
+  openFileClaimModal: function(invoice) {
+    const modalBody = `
+      <form id="claim-form" class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label" for="claim-insurer">Insurance Provider</label>
+          <input type="text" id="claim-insurer" class="form-control" placeholder="e.g. BlueShield Horizon" required>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="claim-policy">Policy Number</label>
+          <input type="text" id="claim-policy" class="form-control" placeholder="Policy #" required>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Claim Amount</label>
+          <input type="text" class="form-control" value="${AuraCare.Utils.formatCurrency(invoice.amount)}" readonly>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="claim-notes">Notes</label>
+          <textarea id="claim-notes" class="form-control" rows="3" placeholder="Optional context for the payer"></textarea>
+        </div>
+      </form>
+    `;
+
+    AuraCare.Modal.open(`File Insurance Claim - ${invoice.id}`, modalBody, [
+      { text: 'Cancel', className: 'btn-secondary', onClick: () => AuraCare.Modal.close() },
+      {
+        text: 'Submit Claim', className: 'btn-primary', onClick: () => {
+          const insurer = document.getElementById('claim-insurer').value.trim();
+          const policyNumber = document.getElementById('claim-policy').value.trim();
+          if (!insurer || !policyNumber) {
+            AuraCare.Toasts.warning('Enter insurer and policy number.');
+            return;
+          }
+
+          AuraCare.Store.addClaim({
+            id: 'CLM-' + Math.floor(1000 + Math.random() * 9000),
+            invoiceId: invoice.id,
+            patientId: invoice.patientId,
+            patientName: invoice.patientName,
+            insurer,
+            policyNumber,
+            claimAmount: invoice.amount,
+            status: 'submitted',
+            submittedDate: new Date().toISOString().substring(0, 10),
+            notes: document.getElementById('claim-notes').value.trim()
+          });
+
+          AuraCare.Toasts.success('Insurance claim submitted.');
+          AuraCare.Modal.close();
+          this.currentTab = 'claims';
+          this.render();
         }
       }
     ]);

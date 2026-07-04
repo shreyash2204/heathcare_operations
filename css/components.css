@@ -1,6 +1,8 @@
 /* Clean clinical card deck */
 .card {
   background-color: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 24px; /* Increased padding for better clinical layout */
@@ -29,6 +31,8 @@
 /* Telemetry Widgets */
 .telemetry-card {
   background-color: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 16px; /* Scaled up */
@@ -165,6 +169,8 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background-color: var(--bg-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .data-table {
@@ -359,7 +365,9 @@
 }
 
 .modal-wrapper {
-  background-color: var(--bg-panel);
+  background-color: var(--bg-glass-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   width: 90%;
@@ -585,7 +593,9 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-glass-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -594,4 +604,88 @@
   min-width: 250px;
   max-width: 350px;
   animation: slideInRight var(--transition-normal) forwards;
+}
+
+/* Notification Center */
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: var(--accent);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  max-height: 380px;
+  background-color: var(--bg-glass-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notif-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.notif-mark-read {
+  background: none;
+  border: none;
+  color: var(--secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notif-dropdown-list {
+  overflow-y: auto;
+  max-height: 320px;
+}
+
+.notif-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.notif-item.unread {
+  background-color: var(--primary-glow);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.notif-item .notif-date {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  font-weight: 400;
 }

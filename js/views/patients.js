@@ -450,7 +450,10 @@ AuraCare.Views.Patients = {
         <!-- Left Side: Basic EMR Vitals details -->
         <div style="display:flex; flex-direction:column; gap:16px; border-right: 1px solid var(--border-color); padding-right:16px;">
           <div>
-            <h4 style="font-size:1.15rem; font-weight:700;">${p.name || 'Anonymous'}</h4>
+            <div class="flex-between">
+              <h4 style="font-size:1.15rem; font-weight:700;">${p.name || 'Anonymous'}</h4>
+              <button class="btn btn-secondary btn-sm" id="btn-edit-profile" style="padding:3px 8px; font-size:0.7rem;"><i data-lucide="pencil" style="width:11px;height:11px;"></i> Edit Profile</button>
+            </div>
             <div style="font-size:0.8125rem; color:var(--text-secondary); margin-top:4px;">
               <span>${p.gender || 'Unknown'}, ${age} Years</span> &bull; 
               <span style="font-family:monospace;">ID: ${p.id}</span>
@@ -524,6 +527,10 @@ AuraCare.Views.Patients = {
       `;
 
       // Attach Event Listeners internally
+      content.querySelector('#btn-edit-profile').addEventListener('click', () => {
+        this.openEditProfileModal(patientId, drawProfile);
+      });
+
       content.querySelector('#btn-save-vitals').addEventListener('click', () => {
         const bp = content.querySelector('#vit-bp').value;
         const hr = parseInt(content.querySelector('#vit-hr').value, 10);
@@ -651,5 +658,62 @@ AuraCare.Views.Patients = {
     };
 
     drawProfile();
+  },
+
+  openEditProfileModal: function(patientId, onSaved) {
+    const p = AuraCare.Store.getPatient(patientId);
+    if (!p) return;
+
+    const modalBody = `
+      <form id="edit-profile-form" class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="edit-name">Full Name</label>
+          <input type="text" id="edit-name" class="form-control" value="${p.name || ''}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-dob">Date of Birth</label>
+          <input type="date" id="edit-dob" class="form-control" value="${p.dob || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-gender">Gender</label>
+          <select id="edit-gender" class="form-control">
+            <option ${p.gender === 'Male' ? 'selected' : ''}>Male</option>
+            <option ${p.gender === 'Female' ? 'selected' : ''}>Female</option>
+            <option ${p.gender === 'Other' ? 'selected' : ''}>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edit-doctor">Assigned Doctor</label>
+          <input type="text" id="edit-doctor" class="form-control" value="${p.doctor || ''}">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label" for="edit-diagnosis">Primary Diagnosis</label>
+          <input type="text" id="edit-diagnosis" class="form-control" value="${p.diagnosis || ''}">
+        </div>
+      </form>
+    `;
+
+    AuraCare.Modal.open('Edit Patient Profile', modalBody, [
+      { text: 'Cancel', className: 'btn-secondary', onClick: () => { AuraCare.Modal.close(); setTimeout(() => this.openPatientProfileModal(patientId), 200); } },
+      {
+        text: 'Save Changes', className: 'btn-primary', onClick: () => {
+          const name = document.getElementById('edit-name').value.trim();
+          if (!name) { AuraCare.Toasts.warning('Name cannot be empty.'); return; }
+
+          AuraCare.Store.updatePatient(patientId, {
+            name,
+            dob: document.getElementById('edit-dob').value,
+            gender: document.getElementById('edit-gender').value,
+            doctor: document.getElementById('edit-doctor').value.trim(),
+            diagnosis: document.getElementById('edit-diagnosis').value.trim()
+          });
+
+          AuraCare.Toasts.success('Patient profile updated.');
+          AuraCare.Modal.close();
+          this.renderPatientRows();
+          setTimeout(() => this.openPatientProfileModal(patientId), 200);
+        }
+      }
+    ]);
   }
 };

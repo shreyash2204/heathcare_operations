@@ -131,9 +131,7 @@ AuraCare.Views.Appointments = {
     grid.querySelectorAll('.btn-complete-apt').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        AuraCare.Store.updateAppointmentStatus(id, 'completed');
-        AuraCare.Toasts.success('Consultation marked completed.');
-        this.render();
+        this.openRecordConsultationModal(id);
       });
     });
 
@@ -234,6 +232,61 @@ AuraCare.Views.Appointments = {
             AuraCare.Modal.close();
             this.render();
           }
+        }
+      }
+    ]);
+  },
+
+  openRecordConsultationModal: function(appointmentId) {
+    const apt = AuraCare.Store.getAppointments().find(a => a.id === appointmentId);
+    if (!apt) return;
+
+    const modalBody = `
+      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Record consultation notes for <strong>${apt.patientName}</strong> with <strong>${apt.doctorName}</strong> before closing this booking.</p>
+      <div class="form-group">
+        <label class="form-label" for="consult-notes">Consultation Notes</label>
+        <textarea id="consult-notes" class="form-control" rows="4" placeholder="Findings, diagnosis update, follow-up plan..."></textarea>
+        <span class="error-text hidden" id="err-consult-notes"></span>
+      </div>
+    `;
+
+    AuraCare.Modal.open('Record Consultation', modalBody, [
+      {
+        text: 'Skip & Mark Done',
+        className: 'btn-secondary',
+        onClick: () => {
+          AuraCare.Store.updateAppointmentStatus(appointmentId, 'completed');
+          AuraCare.Toasts.success('Consultation marked completed.');
+          AuraCare.Modal.close();
+          this.render();
+        }
+      },
+      {
+        text: 'Save Notes & Complete',
+        className: 'btn-primary',
+        onClick: () => {
+          const notes = document.getElementById('consult-notes').value.trim();
+          if (!notes) {
+            document.getElementById('err-consult-notes').textContent = 'Enter consultation notes, or use "Skip & Mark Done".';
+            document.getElementById('err-consult-notes').classList.remove('hidden');
+            return;
+          }
+
+          AuraCare.Store.addConsultation({
+            id: 'CON-' + Math.floor(100 + Math.random() * 900),
+            patientId: apt.patientId,
+            patientName: apt.patientName,
+            doctorName: apt.doctorName,
+            date: new Date().toISOString().substring(0, 10),
+            reason: apt.reason,
+            notes,
+            appointmentId: apt.id
+          });
+
+          AuraCare.Store.updateAppointmentStatus(appointmentId, 'completed');
+          AuraCare.Toasts.success('Consultation recorded and appointment closed.');
+          AuraCare.Modal.close();
+          this.render();
         }
       }
     ]);

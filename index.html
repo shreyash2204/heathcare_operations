@@ -64,7 +64,7 @@
     <!-- Left Navigation Sidebar -->
     <aside class="app-sidebar" id="app-sidebar">
       <!-- Sidebar brand logo header -->
-      <div class="sidebar-logo">
+      <a href="landing.html" class="sidebar-logo" style="cursor:pointer;">
         <div class="logo-icon">
           <i data-lucide="activity" style="width:16px; height:16px; color:white;"></i>
         </div>
@@ -72,7 +72,7 @@
           <span class="logo-text">AuraCare OS</span>
         </div>
         <span class="logo-version" id="sidebar-role-badge">RBAC</span>
-      </div>
+      </a>
 
       <!-- Navigation links -->
       <nav class="sidebar-nav">
@@ -89,6 +89,10 @@
         <a href="#resources" class="nav-item">
           <i data-lucide="layout"></i>
           <span>Beds & Supply Map</span>
+        </a>
+        <a href="#lab" class="nav-item">
+          <i data-lucide="flask-conical"></i>
+          <span>Lab Diagnostics</span>
         </a>
 
         <!-- Group 2: Management -->
@@ -142,6 +146,20 @@
             <input type="text" id="global-search-input" placeholder="Search patient name, EMR ID...">
           </div>
 
+          <div style="position:relative;">
+            <button class="header-btn" id="btn-notifications" title="Notifications">
+              <i data-lucide="bell" style="width:14px; height:14px;"></i>
+              <span id="notif-badge" class="notif-badge hidden">0</span>
+            </button>
+            <div id="notif-dropdown" class="notif-dropdown hidden">
+              <div class="notif-dropdown-header">
+                <span>Notifications</span>
+                <button id="btn-mark-all-read" class="notif-mark-read">Mark all read</button>
+              </div>
+              <div id="notif-dropdown-list" class="notif-dropdown-list"></div>
+            </div>
+          </div>
+
           <button class="header-btn" id="btn-theme-toggle" title="Toggle Theme">
             <i data-lucide="moon" style="width:14px; height:14px;"></i>
           </button>
@@ -175,6 +193,7 @@
   <script src="js/views/patients.js"></script>
   <script src="js/views/staff.js"></script>
   <script src="js/views/resources.js"></script>
+  <script src="js/views/lab.js"></script>
   <script src="js/views/appointments.js"></script>
   <script src="js/views/billing.js"></script>
   <script src="js/app.js"></script>
