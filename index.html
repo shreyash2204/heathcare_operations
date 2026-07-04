@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AuraCare OS - Clinical Operations Hub">
+  <title>AuraCare OS - Clinical Operations Hub</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+  <!-- Authentication Gateway (Clinic Login & Registration Portal) -->
+  <div class="auth-container" id="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-icon">
+          <i data-lucide="activity" style="width:16px; height:16px; color:white;"></i>
+        </div>
+        <span class="auth-logo-text">AuraCare OS</span>
+      </div>
+      
+      <!-- Login Section -->
+      <div id="login-form-section">
+        <h3 class="auth-title">Clinical Staff Sign-In</h3>
+        <p class="auth-subtitle">Authorized institutional access required. Admin: admin@hospital.org / Admin123!</p>
+        
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="login-role">Access Role</label>
+            <select id="login-role" class="form-control" required>
+              <option value="doctor">Doctor Console</option>
+              <option value="admin">Admin Console</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-email">Secure Institutional Email</label>
+            <input type="email" id="login-email" class="form-control" placeholder="d.ross@hospital.org" required>
+            <span class="error-text hidden" id="err-login-email"></span>
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="login-password">Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+            <span class="error-text hidden" id="err-login-password"></span>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%; height:34px;">
+            <i data-lucide="log-in" style="width:14px; height:14px; margin-right:4px;"></i> Access Console
+          </button>
+        </form>
+        
+        <p class="auth-toggle-prompt">
+          Doctor demo: s.jenkins@hospital.org / Password1!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Main Command Shell (Hidden until logged in) -->
+  <div class="app-container hidden" id="app-container">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <!-- Sidebar brand logo header -->
+      <div class="sidebar-logo">
+        <div class="logo-icon">
+          <i data-lucide="activity" style="width:16px; height:16px; color:white;"></i>
+        </div>
+        <div>
+          <span class="logo-text">AuraCare OS</span>
+        </div>
+        <span class="logo-version" id="sidebar-role-badge">RBAC</span>
+      </div>
+
+      <!-- Navigation links -->
+      <nav class="sidebar-nav">
+        <!-- Group 1: Operations -->
+        <div class="nav-section-title">Clinical Operations</div>
+        <a href="#dashboard" class="nav-item active">
+          <i data-lucide="layout-grid"></i>
+          <span>Operations Center</span>
+        </a>
+        <a href="#patients" class="nav-item">
+          <i data-lucide="heart"></i>
+          <span>Patients (EHR)</span>
+        </a>
+        <a href="#resources" class="nav-item">
+          <i data-lucide="layout"></i>
+          <span>Beds & Supply Map</span>
+        </a>
+
+        <!-- Group 2: Management -->
+        <div class="nav-section-title">Administration</div>
+        <a href="#staff" class="nav-item">
+          <i data-lucide="users"></i>
+          <span>Staff Shift Roster</span>
+        </a>
+        <a href="#appointments" class="nav-item">
+          <i data-lucide="calendar"></i>
+          <span>Consults Planner</span>
+        </a>
+        <a href="#billing" class="nav-item">
+          <i data-lucide="credit-card"></i>
+          <span>Billing Operations</span>
+        </a>
+      </nav>
+
+      <!-- Simple Sidebar Footer user info & logout -->
+      <div class="sidebar-footer">
+        <div class="user-avatar" id="sidebar-avatar">DR</div>
+        <div class="user-info" style="flex:1;">
+          <span class="user-name" id="sidebar-user-name">Dr. Daniel Ross</span>
+        <span class="user-role" id="sidebar-user-role">Clinical Staff</span>
+        </div>
+        <button class="header-btn" id="btn-logout" title="Secure Exit" style="width:28px; height:28px; background:none; border:none; color:var(--text-secondary); cursor:pointer;">
+          <i data-lucide="log-out" style="width:14px; height:14px;"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- App Content Layout Column -->
+    <main class="app-main">
+      
+      <!-- Top header bar -->
+      <header class="app-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <!-- Mobile Menu trigger -->
+          <button id="menu-toggle" class="menu-toggle header-btn" title="Toggle Sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          
+          <span style="font-family: var(--font-heading); font-size:1.05rem; font-weight:700; color:var(--text-secondary);">Operations Console</span>
+        </div>
+
+        <!-- Global Action controls -->
+        <div class="header-right">
+          <!-- Global Search box -->
+          <div class="header-search">
+            <i data-lucide="search" style="color:var(--text-muted); width:14px; height:14px;"></i>
+            <input type="text" id="global-search-input" placeholder="Search patient name, EMR ID...">
+          </div>
+
+          <button class="header-btn" id="btn-theme-toggle" title="Toggle Theme">
+            <i data-lucide="moon" style="width:14px; height:14px;"></i>
+          </button>
+        </div>
+      </header>
+
+      <div class="clinical-workspace">
+        <div class="workspace-center" id="app-viewport">
+          <!-- Rendered views injected here -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Reusable dynamic modals overlay placeholder -->
+  <div class="modal-overlay"></div>
+
+  <!-- Dynamic system notifications toasts parent -->
+  <div class="toasts-container"></div>
+
+  <!-- Lucide Vector Icons Library CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Javascript Modules (Script Chain) -->
+  <script src="js/store.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components/toasts.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/charts.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/patients.js"></script>
+  <script src="js/views/staff.js"></script>
+  <script src="js/views/resources.js"></script>
+  <script src="js/views/appointments.js"></script>
+  <script src="js/views/billing.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
